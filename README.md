@@ -2,9 +2,10 @@
 
 Unified arbitrage engine — DEX/CEX/perps/prediction/sports/MEV. Continuous monitoring + atomic execution.
 
-**Status:** Brief 02 — scaffold + first live scanner (perp funding) shipped.
+**Status:** 18 strategies live in scanner · executors built (dry-run) · pre-revenue, awaiting agent-wallet funding.
 **Principal:** Dannyednut (non-US jurisdiction)
-**Cadence:** Continuous monitoring with Telegram alerts; periodic briefs (PDF).
+**Manager:** ZCode agent (took over Oct 12, 2026 — see `docs/handover-2026-10-12.md`)
+**Cadence:** Continuous monitoring with Telegram alerts; periodic briefs.
 
 ## What's here
 
@@ -12,21 +13,24 @@ Unified arbitrage engine — DEX/CEX/perps/prediction/sports/MEV. Continuous mon
 edge-engine/
 ├── config/
 │   ├── chains.toml              # 8 chains wired up
-│   └── strategies.toml          # 6 strategy configs
+│   └── strategies.toml          # strategy configs
 ├── packages/
 │   ├── types/                   # @edge/types — shared domain types
 │   ├── config/                  # @edge/config — TOML + env loader
-│   ├── alerts/                  # @edge/alerts — Telegram bot
+│   ├── alerts/                  # @edge/alerts — Telegram bot (alerts + listener + commands)
 │   ├── pnl/                     # @edge/pnl — SQLite PnL ledger + risk state
 │   ├── risk/                    # @edge/risk — pre-exec guard + kill switch
 │   ├── data-sources/            # @edge/data-sources — viem EVM adapters
 │   ├── sharpe-client/           # @edge/sharpe-client — Sharpe.ai API client
 │   ├── vooi-client/             # @edge/vooi-client — VOOI Perps API client
-│   ├── scanner/                 # @edge/scanner — strategies + runners
-│   ├── simulator/               # @edge/simulator — TBD (week 4-5)
-│   └── executor/                # @edge/executor — TBD (week 5+)
-├── docs/                        # design docs
-├── scripts/                     # ops scripts
+│   ├── backpack-client/         # @edge/backpack-client — Backpack Exchange client
+│   ├── pumpapi-client/          # @edge/pumpapi-client — Pump.fun (Solana) client
+│   ├── scanner/                 # @edge/scanner — 22 strategies + 26 runners (incl. executors)
+│   ├── executor/                # @edge/executor — Kinetiq/Euler/HL clients + EVM executor
+│   ├── orchestrator/            # @edge/orchestrator — multi-agent orchestration
+│   └── enterprise/              # @edge/enterprise — ops, risk, client mgmt, reporting (tsx)
+├── docs/                        # research + atlases + status reports
+├── scripts/                     # ops scripts (supervisors)
 └── .env.example                 # secrets template
 ```
 
@@ -38,7 +42,7 @@ pnpm install
 
 # 2. Configure secrets
 cp .env.example .env
-# Edit .env — fill in any missing values (most are pre-filled from principal)
+# Edit .env — TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, VOOI_API_TOKEN, …
 
 # 3. Build everything
 pnpm build
@@ -49,23 +53,35 @@ pnpm --filter @edge/alerts test
 # 5. Test RPC connectivity (all 8 chains)
 pnpm --filter @edge/data-sources test
 
-# 6. Run discovery — see what Sharpe + VOOI return
-pnpm --filter @edge/scanner start:discover
+# 6. Trading readiness check (APIs, RPC, live opportunities)
+npx tsx packages/scanner/src/runners/readiness-check.ts
 
-# 7. Run the perp-funding scanner (live, sends Telegram alerts)
-pnpm --filter @edge/scanner start:funding
+# 7. Run all 18 strategies (60s cycle, sends Telegram alerts)
+pnpm --filter @edge/scanner start:all
 ```
 
-## Strategy status
+## Strategy status (Oct 12, 2026)
 
-| Strategy | Landscape | Status |
-|----------|-----------|--------|
-| Perp funding (Sharpe + VOOI) | F — Perps/funding | 🟢 LIVE — scanner runs every 60s |
-| DEX-CEX (flashloan) | A — DEX-CEX | 🟡 Building (week 5-6) |
-| DEX-DEX (flashloan) | C — DEX-DEX | 🟡 Building (week 5-6) |
-| Prediction (Polymarket/Azuro/Overtime/Zeitgeist/Manifold) | D — Prediction | 🟡 Building (week 7-8) — Kalshi dropped (principal non-US) |
-| Sports (Pinnacle + soft books) | E — Sports | 🟡 Building (week 11) |
-| Solana MEV (Jito backrun) | G — MEV | 🟡 Building (week 9-10) |
+| # | Strategy | Status |
+|---|----------|--------|
+| 1 | Perp funding arb (32 venues via Sharpe+VOOI) | 🟢 Live (needs Sharpe key for full venue set) |
+| 2 | CEX-HL funding arb (Binance/Bybit/OKX ↔ HL) | 🟢 Live |
+| 3 | DEX-CEX flashloan arb | 🟢 Live (scanner) |
+| 4 | Solana memecoin cross-AMM | 🟢 Live (needs Helius key for full data) |
+| 5 | Prediction market arb (Polymarket et al.) | 🟢 Live |
+| 6 | Sports arbitrage (Odds API) | 🟡 Throttled (needs Odds API key) |
+| 7 | Pendle Boras basis arb | 🟢 Live (needs filter upgrade) |
+| 8 | Tokenized equity arb (HL perp vs spot) | 🟢 Live |
+| 9 | CexLikeDex price arb (HL perp vs CEX) | 🟢 Live |
+| 10 | HyperSwap AMM vs HL orderbook | 🟢 Live |
+| 11 | kHYPE LST carry arb | 🟢 Scanner live · **executor ready — awaiting $5k HYPE** |
+| 12 | Gold arb (PAXG vs XAUT) | 🟢 Live |
+| 13 | Equity perp cross-venue (HL ↔ Backpack) | 🟢 Live |
+| 14 | LST yield comparison (32 Pendle markets) | 🟢 Live |
+| 15 | PT-kHYPE fixed vs floating | 🟢 Live |
+| 16 | PT yield arb (cross-LST) | 🟢 Live |
+| 17 | Euler HL lending arb | 🟢 Scanner live · **executor ready — awaiting $5k USDC** |
+| 18 | HL spot basis (329 pairs) | 🟢 Live |
 
 ## Architecture
 
@@ -73,9 +89,9 @@ Six layers (see Brief 01 PDF, Chapter 4):
 
 1. **Config** — `chains.toml` + `strategies.toml` + `.env` secrets
 2. **Scanner** — pluggable Strategy interface (capybot pattern)
-3. **Data sources** — per-chain viem adapters + Sharpe + VOOI REST clients
-4. **Simulator** — TBD; input-amount ladder + Uniswap V3 Quoter
-5. **Executor** — TBD; Aave V3 flashloan + Flashbots bundle (EVM), Jupiter + Jito (Solana), VOOI paired-leg (perps)
+3. **Data sources** — per-chain viem adapters + Sharpe + VOOI REST clients + HL info API
+4. **Simulator** — execution simulator + paper trader
+5. **Executor** — Kinetiq (kHYPE), Euler V2, VOOI paired-leg, CEX (ccxt), HL SDK signing
 6. **Risk** — pre-exec guard + daily loss cap + cooldown + kill switch
 
 ## Risk envelope (enforced in code)
@@ -98,22 +114,17 @@ Six layers (see Brief 01 PDF, Chapter 4):
 
 ## Alerts
 
-Telegram bot is the primary alert channel.  Severity → channel:
+Telegram bot is the primary alert channel. Severity → channel:
 - `info` / `opportunity` / `warning` → Telegram
 - `critical` → Telegram + email (future)
 - `kill-switch` → Telegram + SMS (future)
 
-Bot commands (planned):
-- `/pause <reason>` — activates kill switch
-- `/resume` — deactivates kill switch
-- `/status` — current PnL + open positions
-- `/close <position>` — manually close a position
+Bot commands (live): `/status`, `/opportunities`, `/paper`, `/report`, `/vooi`, `/pricespread`, `/khype`, `/euler`, `/kinetiq`, `/help`
 
 ## Repo
 
-- GitHub: https://github.com/Dannyednut/Edge-Engine
-- Branch protection: `main` requires PR review
-- CI: GitHub Actions runs typecheck + tests on every PR (planned)
+- **Active:** https://github.com/Dannyednut/edge-engine-v2 (all new work lands here)
+- **Archive:** https://github.com/Dannyednut/Edge-Engine (original, 250 commits, Sep 28 – Oct 12 2026)
 
 ## License
 

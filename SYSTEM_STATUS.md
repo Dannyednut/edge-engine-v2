@@ -1,75 +1,53 @@
-# Edge-Engine System Status — Oct 7 2026 (Updated 16:35 UTC)
+# Edge-Engine System Status — Oct 12 2026 (Manager takeover)
 
 ## Live Status
-- **Strategies**: 19 running in parallel
-- **Background processes**: 4 (scanner, listener, command handler, opp monitor)
-- **Total commits**: 109
-- **Alias assets decoded**: 192/298 (64%)
+- **Manager**: ZCode agent (took over from previous agent, Oct 12 2026)
+- **Repo**: https://github.com/Dannyednut/edge-engine-v2 (active) · Edge-Engine (archive)
+- **Machine**: Windows (new host — previous Linux host decommissioned)
+- **Strategies**: 18 wired into all-runner (22 built)
+- **Total commits**: 250 (archive) + new work on v2
 
-## Top Opportunities (live, verified with priceSpreadAtSize)
+## Infrastructure (verified Oct 12, ~04:40 UTC)
+| Component | Status |
+|---|---|
+| Node 24 + pnpm 12.6 + build (19 pkgs) | ✅ Clean |
+| VOOI API (public scanner + auth /bots) | ✅ Valid |
+| HyperEVM RPC | ✅ Block 48315339 |
+| Telegram bot (@crests_test_bot) | ✅ Online (stale third-party webhook removed) |
+| Telegram chat ID | ❌ Awaiting principal's first message to bot |
+| Sharpe API key | ❌ Not set (perp-funding strategy degraded to VOOI-only) |
+| Odds API key | ❌ Not set (sports arb disabled) |
+| Agent wallet (HYPE/USDC) | ❌ Not funded — all executors in dry-run |
+| Background processes | ⏸ Starting once chat ID is captured |
 
-### Tier 1: VOOI Price Spread Arb (INSTANT — no holding) — OUR UNIQUE EDGE
-Top 5 (verified with slippage/depth at $5k trade size):
-1. BP: MEXC→Gate 10.95% spread → $382/cycle (OI: $1M — thin)
-2. Anthropic: MEXC→Robinhood 4.73% → $202/cycle (OI: $34B/$18B — deep)
-3. Anthropic: MEXC→Lighter 4.71% → $201/cycle (OI: $34B/$4B)
-4. Anthropic: MEXC→HL 2.87% → $111/cycle (OI: $34B/$86B)
-5. Anthropic: MEXC→Gate 2.84% → $104/cycle (OI: $34B/$3B)
+## Live Opportunities (scanned Oct 12, ~04:45 UTC)
+- **kHYPE LST carry**: 2.54% discount = ~$3,411/yr on $5k — executor ready, needs $5k HYPE
+- **VOOI price spreads**: 7 opps >2% at size (top: POWR binance→gate 2.25%, kioxia mexc→gate 1.66% at $500M OI, softbank 1.59%)
+- **VOOI funding arbs**: KAIA bybit↔binance 2600% APR (OI $818k — likely ephemeral), natgas gate↔extended 799% (OI $10M), CASHCAT HL→lighter 536%
+- **Euler lending arb**: no spread currently (eUSDC vaults converged)
 
-Top 5 total: $1,000/cycle (instant)
-At 3 cycles/day, 50% capture: $1,500/day = $548k/yr on $25k = 2,192% APR
+## Honest Economics (manager's view)
+| Tier | Strategy | Claimed | Realistic |
+|---|---|---|---|
+| Credible | kHYPE carry | 65% APR | ~60-65% — verified on-chain, low risk |
+| Credible | Euler USDC spread | 7-9% | intermittent — spread comes and goes |
+| Plausible | VOOI funding arb | 30-60% | matches VOOI's own "low single-digit % monthly" |
+| Speculative | VOOI price spread | 2,192% | real spreads observed but unproven with capital; needs live pilot |
 
-**Persistence verified**: 90% over 2.5 min. Private AI companies <1% change.
-**Slippage verified**: Anthropic 0.05-0.31%, OpenAI 0.05-0.12% — near-zero.
-**VOOI doesn't offer this** — their official bot is funding-rate only.
+Headline "$548k/yr" figures are single-point-in-time extrapolations. First goal with
+capital: a small controlled pilot to measure real capture rate before scaling.
 
-### Tier 2: VOOI Funding Rate Arb (8-96h hold)
-VOOI's own estimate: "low single-digit % monthly" = 12-60% APR
-Using VOOI-recommended parameters (70-120% APR range, 12h min hold, 96h max hold)
-Expected: $7.5-15k/yr on $25k = 30-60% APR
+## Go-Live Options (unchanged, principal's decision)
+- **Option A**: $25k on ultra.vooi.io → price-spread + funding arb pilot
+- **Option B**: $5k HYPE + $5k USDC on HyperEVM → kHYPE carry + Euler arb (safest)
+- **Option C**: Both
 
-### Tier 3: HyperEVM Carry + Lending (7-day hold)
-- kHYPE LST carry: $3,386/yr on $5k (68% APR)
-- Euler USDC lending: $376/yr on $5k (7.5% APR)
-
-## Combined (revised based on VOOI's own data)
-| Strategy | Capital | Annual $ | APR |
-|----------|---------|----------|-----|
-| Price Spread Arb | $25k | $548k | 2,192% |
-| Funding Rate Arb | $25k | $7.5-15k | 30-60% |
-| kHYPE + Euler | $10k | $3,762 | 37.6% |
-| **Total** | **$60k** | **$559-567k** | **932-945%** |
-
-## What's Needed to Go Live
-
-### Option A: VOOI Price Spread (highest ROI, our unique edge)
-1. Deposit $25k on ultra.vooi.io
-2. Text "approved" on Telegram
-3. Run: `pnpm --filter @edge/scanner start:go-live -- --approved`
-4. Expected: $548k/yr (2,192% APR)
-
-### Option B: HyperEVM (safest)
-1. Fund agent wallet with $5k HYPE + $5k USDC on HyperEVM
-2. Set AGENT_HYPE_ADDRESS + AGENT_HYPE_PRIVKEY env vars
-3. Expected: $3,762/yr (37.6% APR)
-
-### Option C: Both (maximum)
-1. Deposit $25k on VOOI + $10k on HyperEVM
-2. Expected: $559k/yr (932% APR)
-
-## Key Research Findings (Oct 7 2026)
-
-1. **VOOI's official bot** estimates "low single-digit % monthly" for funding arb
-   → We revised funding arb from $124k/yr to $7.5-15k/yr
-2. **Price spread arb is NOT covered by VOOI's bot** → our unique edge
-3. **priceSpreadAtSize** is the most accurate profit metric (accounts for depth + slippage)
-4. **Private AI companies** (Anthropic, OpenAI) have near-zero slippage + 90% persistence
-5. **VOOI recommends**: 70-120% APR range, 12h min hold, 96h max hold, 5% stop loss
-6. **alias: markets** share the same USDC margin pool as crypto-perps on Hyperliquid
-7. **192/298 alias assets decoded** (64%) including private AI, index futures, 100+ stocks
-8. **HYPE 3.5x'd overnight** ($25→$89.5) — kHYPE arb even more profitable
-9. **HLP in drawdown** (-50% 30d APR) — HYPE pump hurt positions
-10. **15 HyperEVM DEXs** discovered — most too illiquid except HyperSwap + Ramses V3
+## Immediate Manager Priorities
+1. Capture Telegram chat ID (principal messages @crests_test_bot) → start all 4 background processes
+2. Wire Sharpe API key when provided (unlocks 32-venue perp funding data)
+3. Filter upgrade: Pendle Boros scanner (95 → ~10 alerts)
+4. README/docs refresh (done Oct 12), handover doc (done Oct 12)
+5. HLP yield monitor re-entry signal (alerts when APR > 15%)
 
 ## CLI Commands (17 tools)
 `start:all` `start:master-view` `start:dashboard` `start:readiness` `start:daily-report`
