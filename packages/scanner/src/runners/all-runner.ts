@@ -63,20 +63,32 @@ async function main() {
   console.log('═══════════════════════════════════════════════════');
   const cfg = loadConfig(REPO_ROOT);
 
-  if (!cfg.alerts.telegram.botToken || !cfg.alerts.telegram.chatId) {
-    console.error('❌ Telegram credentials not set');
-    process.exit(1);
-  }
-
-  const alerter = new TelegramAlerter({
-    botToken: cfg.alerts.telegram.botToken,
-    chatId: cfg.alerts.telegram.chatId,
-  });
+  // Log-only mode: scan without Telegram (alerts go to console) so discovery
+  // never stalls waiting on chat-ID setup.
+  const canAlert = !!cfg.alerts.telegram.botToken && !!cfg.alerts.telegram.chatId;
+  const alerter: TelegramAlerter = canAlert
+    ? new TelegramAlerter({
+        botToken: cfg.alerts.telegram.botToken,
+        chatId: cfg.alerts.telegram.chatId,
+      })
+    : ({
+        async sendAlert(a: any) {
+          console.log(`[alert:${a.severity}] ${a.title}${a.body ? ` — ${String(a.body).split('\n')[0]}` : ''}`);
+          return 0;
+        },
+        async info(title: string, body: string) { console.log(`[alert:info] ${title} — ${body.split('\n')[0]}`); return 0; },
+        async opportunity(title: string, body: string) { console.log(`[alert:opportunity] ${title} — ${body.split('\n')[0]}`); return 0; },
+        async killSwitch(reason: string) { console.log(`[alert:kill-switch] ${reason}`); return 0; },
+        async send(text: string) { console.log(`[alert] ${text.split('\n')[0]}`); return 0; },
+      } as unknown as TelegramAlerter);
+  if (!canAlert) console.log('⚠ Telegram chat ID not set — running in LOG-ONLY mode (alerts to console)');
   const pnl = new PnlDb({ path: 'data/edge-engine.sqlite', risk: cfg.risk });
 
   const sharpe = new SharpeClient({ apiKey: cfg.apis.sharpe?.apiKey });
   const vooi   = new VooiClient({ apiToken: cfg.apis.vooi?.apiToken });
-  const pump   = new PumpApiClient({ publicKey: process.env.AGENT_SOLANA_ADDRESS || undefined });
+  // PumpApi needs *some* identifier to construct; anonymous read key is fine for
+  // discovery-mode scanning (strategy is .catch-wrapped per tick).
+  const pump   = new PumpApiClient({ publicKey: process.env.AGENT_SOLANA_ADDRESS || '11111111111111111111111111111111' });
 
   // Strategy 1: perp funding (any venue)
   const perpFunding = new PerpFundingStrategy(sharpe, vooi, {
